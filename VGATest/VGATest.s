@@ -50,6 +50,46 @@ main:
 	call draw_px_at_xy
 	
 	
+	movui r4, 1
+	movui r5, 1
+	movui r6, 10
+	movui r7, 10
+	call draw_rect
+	
+	
+	movui r4, 10
+	movui r5, 50
+	movui r6, 10
+	movui r7, 10
+	call draw_rect
+	
+	
+	movui r4, 80
+	movui r5, 10
+	movui r6, 20
+	movui r7, 100
+	call draw_rect
+	
+	movui r4, 50
+	movui r5, 100
+	movui r6, 30
+	movui r7, 30
+	call draw_rect
+	
+	movui r4, 100
+	movui r5, 100
+	movui r6, 30
+	movui r7, 30
+	call draw_rect
+	
+	movui r4, 150
+	movui r5, 140
+	movui r6, 1
+	movui r7, 1
+	call draw_rect
+	
+	
+	
 	
 	
 LOOP_FOREVER:
@@ -293,30 +333,54 @@ stw r7, 48(sp)# y length
 
 #Logic here
 	#Offset = 2*x, + 1024*y
+	#x and y
 	mov r17, r4
 	mov r18, r5
 	
 	mov r19, r6
 	mov r20, r7
 	
-	#calc end px x
+	#calc end px x and y
 	add r19, r19, r4
 	add r20, r20, r5
 	
-	movui r16, 0xFFF0 #color
+	addi r19, r19, -1
+	addi r20, r20, -1
+	
+	#init x any y counters
+	mov r22, r17
+	mov r23, r18
+	
+	movui r16, 0xFF00 #color
 	#make sure parameters are within bounds
 	#(0,0) -> (319, 239)
 	
-	ITERATE_THROUGH_X:
+	ITERATE_THROUGH:
 	
-	mov r4, r17
-	mov r5, r18
-	mov r6, r16
-	call draw_px_at_xy
-	
-	
-	
-	addi r17, 1
+		mov r4, r22 #x
+		mov r5, r23 #y
+		mov r6, r16 #Color
+		call draw_px_at_xy
+		
+		beq r22, r19, X_END 
+		#Not end end x coord
+		#Increment x then draw again
+		addi r22, r22, 1
+		br ITERATE_THROUGH
+		
+		#End of x, reset x, increment y
+		X_END:
+		mov r22, r17
+		br INCR_Y
+		
+		INCR_Y:
+		beq r23, r20, Y_END
+		#Not end of y, increment y, redraw
+		addi r23, r23, 1
+		br ITERATE_THROUGH
+		
+		#End of y, drawing done
+		Y_END:
 	
   
 #Return registers to how they were before call
@@ -339,5 +403,7 @@ ldw r7, 48(sp)
 addi sp, sp, 52 #Return stack pointer 
 
 ret
+
+#Draw unfilled rectangle
 
 
