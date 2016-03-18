@@ -49,7 +49,7 @@ main:
 	movui r6, 0xfff0
 	call draw_px_at_xy
 	
-	
+	/*
 	movui r4, 1
 	movui r5, 1
 	movui r6, 10
@@ -87,6 +87,21 @@ main:
 	movui r6, 1
 	movui r7, 1
 	call draw_rect
+	
+	*/
+	
+	movui r4, 190
+	movui r5, 100
+	movui r6, 10
+	movui r7, 20
+	call draw_rect_border
+	
+	movui r4, 190
+	movui r5, 100
+	movui r6, 10
+	movui r7, 20
+	call draw_rect
+	
 	
 	
 	
@@ -405,5 +420,139 @@ addi sp, sp, 52 #Return stack pointer
 ret
 
 #Draw unfilled rectangle
+
+#takes in x,y of top corner of rect and width (x), length (y)
+draw_rect_border:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)#x parameter
+stw r5, 40(sp)#y parameter
+stw r6, 44(sp)# x width
+stw r7, 48(sp)# y length
+
+#Logic here
+	#Offset = 2*x, + 1024*y
+	#x and y
+	mov r17, r4
+	mov r18, r5
+	
+	mov r19, r6
+	mov r20, r7
+	
+	#calc end px x and y
+	add r19, r19, r4
+	add r20, r20, r5
+	
+	addi r19, r19, -1
+	addi r20, r20, -1
+	
+	#init x any y counters
+	mov r22, r17
+	mov r23, r18
+	
+	movui r16, 0xFFF0 #color
+	#make sure parameters are within bounds
+	#(0,0) -> (319, 239)
+		
+		
+		#Top line, y=y, x=x to x=xend
+		
+		ITERATE_TOP:
+		mov r4, r22 #x
+		mov r5, r23 #y
+		mov r6, r16 #Color
+		call draw_px_at_xy
+		
+		beq r22, r19, ITERATE_LEFT_RESET 
+		#Not end end x coord
+		#Increment x then draw again
+		addi r22, r22, 1
+		br ITERATE_TOP
+		
+		ITERATE_LEFT_RESET:
+		mov r22, r17 # X to beginning
+		mov r23, r18 # Y to beginning
+		
+		ITERATE_LEFT:
+		mov r4, r22 #x
+		mov r5, r23 #y
+		mov r6, r16 #Color
+		call draw_px_at_xy
+		
+		beq r23, r20, ITERATE_BOTTOM_RESET
+		#Not end end y coord
+		#Increment y then draw again
+		addi r23, r23, 1
+		br ITERATE_LEFT
+		
+		ITERATE_BOTTOM_RESET:
+		mov r22, r17 # X to beginning
+		mov r23, r20 # Y to End
+		
+		ITERATE_BOTTOM:
+		mov r4, r22 #x
+		mov r5, r23 #y
+		mov r6, r16 #Color
+		call draw_px_at_xy
+		
+		beq r22, r19, ITERATE_RIGHT_RESET
+		#Not end end x coord
+		#Increment x then draw again
+		addi r22, r22, 1
+		br ITERATE_BOTTOM
+		
+		ITERATE_RIGHT_RESET:
+		mov r22, r19 # X to End
+		mov r23, r18 # Y to Beginning
+		
+		ITERATE_RIGHT:
+		mov r4, r22 #x
+		mov r5, r23 #y
+		mov r6, r16 #Color
+		call draw_px_at_xy
+		
+		beq r23, r20, DONE_BORDER
+		#Not end end x coord
+		#Increment x then draw again
+		addi r23, r23, 1
+		br ITERATE_RIGHT
+		
+		
+		DONE_BORDER:
+		
+	
+  
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
 
 
