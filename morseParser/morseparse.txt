@@ -1,0 +1,69 @@
+# initialize r16, r17, & r18 to 0 before calling this function for the first time; do not overwrite
+# allocate space in memory for the morse sequence. Initialize r19 to point to this mem addr
+
+# explanation of the (relative) timing convention:
+# all element lengths are integer (a) multiples of the dot
+# 0x0 Dot  			= x 		
+# 0x1 Dash 			= 3x 		a dot/dash is an "element"
+# 0xD Element pause 		= x		there must be a break of length (x) between dots/dashes
+# 0xE Char pause 		= 3x		go to next character; done with current char
+# 0xF Word pause (space) 	= 7x		blank white space; done with current word
+
+# (absolute) timing convention
+# WPM = 1.2 * ( 1 / x ); 		1 / x = frequency
+# at WPM = 10, x = 0.12 s
+# at WPM = 15, x = 0.08 s
+
+# at a sample rate of 100 Hz, there must be ( a * x * 100 ) - 1 consecutive hits to qualify as an element
+# for example, at WPM = 15 -> x = 0.08s -> there must be ( 3 * 0.08 * 100 ) - 1 = 23 consecutive hits to qualify as a dash
+
+
+# ________________________________________________________________________________________________________________
+# LOGIC:
+
+# function takes in a "boolean" value - is the sensor detecting an input above the threshold, or not - in r4
+morseParse:
+
+# by default, assume WPM = 15 -> x = 0.08 -> x * 100 = 8.  Maybe implement WPM settings based on switches?
+# store x * 100 in r5 (or fetch from memory maybe?)
+movi r5, 0x8
+
+# mask the LSB (boolean bit) of r4 - referred to as a *this* "sample" from here on
+andi r6, r4, 0x1
+
+# use r16 to save whether the *previous* sample was a hit/miss (hit = 1 = above threshold, miss = 0 = below threshold)
+
+# if ( *this* sample == *previous* sample ), jump to increment logic
+beq r6, r16, incre		
+# else reset r17 & r18, and since the sequence has been broken, check for an element
+mov r17, r0
+mov r18, r0
+br checkElement
+
+# use r17 to keep track of how many consecutive hits, r18 for consecutive misses
+incre:
+beq r6, r0, increMiss
+addi r17, r17, 1		# else increment r17 (hit)
+br end
+
+increMiss:			
+addi r18, r18, 1
+
+# if the sequence has been broken, check r17 & r18 for an element
+checkElement:
+movi r20, 55			# r20 = 7x - 1
+bge r18, r20, saveWordPause	# if ( more than 55 consecutive misses ), save a "Word pause" to memory
+
+
+saveWordPause:
+stb 
+
+increMem:
+addi r20, r20, 1		# increment memory pointer (move on to next element)
+
+end:
+# save *this* sample into r16 (to be used again in next run)
+mov r16, r6
+
+# go back for more :D
+return
