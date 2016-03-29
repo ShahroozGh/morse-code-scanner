@@ -11,14 +11,20 @@
         <type>Assembly Program</type>
         <source_files>
             <source_file filepath="true">Motor.s</source_file>
+            <source_file filepath="true">morseparse.s</source_file>
         </source_files>
         <options>
             <start_symbol>main</start_symbol>
         </options>
         <linker_sections>
-            <linker_section name=".text">
+            <linker_section name=".data">
                 <memory_device>SDRAM.s1</memory_device>
                 <base_address>0x00000000</base_address>
+                <end_address>0x00002710</end_address>
+            </linker_section>
+            <linker_section name=".text">
+                <memory_device>SDRAM.s1</memory_device>
+                <base_address>0x00002711</base_address>
                 <end_address>0x03FFFFFF</end_address>
                 <required_section/>
             </linker_section>
