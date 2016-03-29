@@ -1,5 +1,5 @@
 # initialize r16, r17, & r18 to 0 before calling this function for the first time; do not overwrite
-# allocate space in memory for the morse sequence. Initialize r19 to point to this mem addr
+# allocate space in memory for the morse sequence. Initialize r5 to point to this mem addr (and pass it as a param)
 
 # explanation of the (relative) timing convention:
 # all element lengths are integer (a) multiples of the dot
@@ -17,6 +17,7 @@
 # at a sample rate of 100 Hz, there must be ( a * x * 100 ) - 1 consecutive hits to qualify as an element
 # for example, at WPM = 15 -> x = 0.08s -> there must be ( 3 * 0.08 * 100 ) - 1 = 23 consecutive hits to qualify as a dash
 
+# AS OF THE FIRST REVISION, QUITE A FEW VALUES ARE HARD-CODED. THIS MAY NOT BE IDEAL AND WILL BE REVISED
 
 # ________________________________________________________________________________________________________________
 # LOGIC:
@@ -26,7 +27,7 @@ morseParse:
 
 # by default, assume WPM = 15 -> x = 0.08 -> x * 100 = 8.  Maybe implement WPM settings based on switches?
 # store x * 100 in r5 (or fetch from memory maybe?)
-movi r5, 0x8
+# movi r5, 0x8 - NOT CURRENTLY USED
 
 # mask the LSB (boolean bit) of r4 - referred to as a *this* "sample" from here on
 andi r6, r4, 0x1
@@ -54,12 +55,42 @@ checkElement:
 movi r20, 55			# r20 = 7x - 1
 bge r18, r20, saveWordPause	# if ( more than 55 consecutive misses ), save a "Word pause" to memory
 
+movi r20, 23			# r20 = 3x - 1
+bge r18, r20, saveCharPause	# if ( more than 23 consecutive misses ), save a "Char pause" to memory
+bge r17, r20, saveDash		# if ( more than 23 consecutive hits ), save a "Dash" to mem
+
+movi r20, 7			# r20 = x - 1
+bge r18, r20, saveElemPause	# if ( more than 7 consecutive misses ), save a "Element pause" to memory
+bge r17, r20, saveDot		# if ( more than 7 consecutive hits ), save a "Dot" to memory
+
 
 saveWordPause:
-stb 
+movi r21, 0xF			# store "Word pause" to reg
+stb r21, (r5)			# store "Word pause" to memory addr 
+increMem			# increment memory pointer (move on to next element)
+
+saveCharPause:
+movi r21, 0xE			# store "Char pause" to reg
+stb r21, (r5)			# store "Char pause" to memory addr 
+increMem			# increment memory pointer (move on to next element)
+
+saveDash:
+movi r21, 0x1			# store "Dash" to reg
+stb r21, (r5)			# store "Dash" to memory addr 
+increMem			# increment memory pointer (move on to next element)
+
+saveElemPause:
+movi r21, 0xD			# store "Elem pause" to reg
+stb r21, (r5)			# store "Elem pause" to memory addr 
+increMem			# increment memory pointer (move on to next element)
+
+saveDot:
+movi r21, 0x0			# store "Dot" to reg
+stb r21, (r5)			# store "Dot" to memory addr 
+increMem			# increment memory pointer (move on to next element)
 
 increMem:
-addi r20, r20, 1		# increment memory pointer (move on to next element)
+addi r20, r20, 2		# increment memory pointer (move on to next element)
 
 end:
 # save *this* sample into r16 (to be used again in next run)
