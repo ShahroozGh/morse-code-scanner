@@ -3,9 +3,10 @@
 .equ TIMER_ADDR_2, 0xFF202020
 .equ READ_TIME, 1000000000#0x7FFFFFFF #10 seconds
 .equ THRESH, 0x07
-.equ DELAY, 50
+.equ DELAY, 20
+.equ DASH_LENGTH_THRESH, 0x02500000 
 
-.data
+.data #Starts at 200
 #Stored Encoded morse code
 ENCODED_MORSE:
 .skip 400 #400 bytes reserved for 100 words
@@ -30,6 +31,9 @@ BLACK_END_TIME:
 .word 0
 
 DELAY_BUFFER:
+.word 0
+
+ENCODED_MORSE_SIZE:
 .word 0
 
 .text
@@ -173,16 +177,26 @@ POLL:
 		beq r8, r9, BLACK_TO_WHITE
 		br POLL_TIMER_2 
 			
-		BLACK_TO_WHITE:
+		BLACK_TO_WHITE: #Need to store char now
+		#Start delay buffer
+		movui r9, 1
+		movia r8, DELAY_BUFFER
+		stw r9, (r8)
+		
+		#Set Prev to WHITE	
 		movui r8, 1
-		#Set Prev to WHITE
 		movia r9, PREV_COLOR
 		stw r8, (r9)
 		
 		call read_timer2_value
 		movia r9, BLACK_END_TIME
 		stw r2, (r9)
-		br READ_COMPLETE #Stop
+		#Store DOT/DASH to mem
+		
+		call storeDotOrDash
+		
+		br POLL_TIMER_2
+		#br READ_COMPLETE #Stop
 	
 	
 	#---------------------------------
@@ -233,6 +247,101 @@ POLL:
 	
 LOOP_FOREVER:
     br LOOP_FOREVER                   # Loop forever.
+
+	
+	
+#DOT/DASH DETECT AND STORE FUNCTION
+storeDotOrDash:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)#Measured time
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)	
+
+#Logic here
+
+	#Load Start and end time
+	movia r16, BLACK_END_TIME
+	ldw r17, (r16)
+	
+	movia r16, BLACK_START_TIME
+	ldw r18, (r16)
+	
+	#Get time of black
+	sub r18, r18, r17
+	
+	movia r16, DASH_LENGTH_THRESH
+	
+	bgt r18, r16, STORE_DASH
+	br STORE_DOT
+	
+	STORE_DASH:
+		#pointer to morse array
+		movia r16, ENCODED_MORSE
+		#size of array
+		movia r17, ENCODED_MORSE_SIZE
+		ldw r17, (r17)
+		#Get location of top of array
+		add r16, r17, r16
+		
+		#Store Dash
+		movui r18, 2
+		stw r18, (r16)
+		br INCR_ENC_SIZE
+		
+	STORE_DOT:
+		#pointer to morse array
+		movia r16, ENCODED_MORSE
+		#pointer to size of array
+		movia r17, ENCODED_MORSE_SIZE
+		ldw r17, (r17)
+		#Get location of top of array
+		add r16, r17, r16
+		
+		#Store DOT
+		movui r18, 1
+		stw r18, (r16)
+		br INCR_ENC_SIZE
+		
+	INCR_ENC_SIZE:
+		addi r17, r17, 4
+		movia r16, ENCODED_MORSE_SIZE
+		stw r17, (r16)
+	
+	
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
 
 ####TIMER FUNCTION
 
