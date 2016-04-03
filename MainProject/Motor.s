@@ -38,6 +38,9 @@ DELAY_BUFFER:
 ENCODED_MORSE_SIZE:
 .word 0
 
+SCAN_RUNNING: #0 For stop, 1 means continue scan, 2 means start decoding
+.word 0
+
 .text
 
 .global main
