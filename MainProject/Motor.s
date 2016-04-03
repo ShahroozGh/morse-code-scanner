@@ -13,6 +13,7 @@
 
 .data #Starts at 200
 #Stored Encoded morse code
+.global ENCODED_MORSE
 ENCODED_MORSE:
 .skip 400 #400 bytes reserved for 100 words
 
@@ -38,6 +39,7 @@ BLACK_END_TIME:
 DELAY_BUFFER:
 .word 0
 
+.global ENCODED_MORSE_SIZE
 ENCODED_MORSE_SIZE:
 .word 0
 
@@ -443,8 +445,13 @@ POLL:
 	#Start Decoding
 	
 	#Start Drawing
-
-
+	#Reset screen to black
+	call fill_screen
+	
+	#Draw morse
+	call draw_encoded_morse
+	
+	#Draw Decoded text
 	
 LOOP_FOREVER:
     br LOOP_FOREVER                   # Loop forever.

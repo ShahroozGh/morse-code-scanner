@@ -4,6 +4,125 @@
 .equ VGA_END_ADDR, 0x0803BE7E
 .equ CHAR_END_ADDR, 0x09001DCF
 
+.equ MORSE_START_X, 10
+.equ MORSE_START_Y, 10
+.equ MORSE_HIGHT, 5
+.equ UNIT_WIDTH, 5
+.equ DASH_WIDTH, 10
+
+
+
+.global draw_encoded_morse
+#takes in NOTHING
+draw_encoded_morse:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)
+
+#Logic here
+
+	#Pointer to encoded array, Increment this to keep track of where we are in the array
+	movia r16, ENCODED_MORSE
+	
+	#Size of array
+	movia r17, ENCODED_MORSE_SIZE
+	ldw r17, (r17)
+	
+	#FINAL LOCATION + 1
+	add r17, r17, r16
+	
+	movui r22, MORSE_START_X
+	#movui r23, MORSE_START_Y
+	
+	#Iterate throuogh array and draw
+	
+	DRAW_NEXT_SYMBOL:
+	
+	#If we get to final address+1 stop
+	beq r17, r16, FINISH_MORSE_DRAW
+	
+	#Load Encoded symbol
+	ldw r18, (r16)
+	
+	#Check what to draw
+	movui r19, 1
+	beq r18, r19, DRAW_DOT
+	
+	movui r19, 2
+	beq r18, r19, DRAW_DASH
+	
+	movui r19, 3
+	beq r18, r19, DRAW_UNIT_SPACE
+	
+	#Draw dot/dash then unit space
+	DRAW_DOT:
+		mov r4, r22
+		movui r5, MORSE_START_Y
+		movui r6, UNIT_WIDTH
+		movui r7, MORSE_HIGHT
+		call draw_rect_border
+		addi r22, r22, 5
+		br DRAW_UNIT_SPACE
+	DRAW_DASH:
+		mov r4, r22
+		movui r5, MORSE_START_Y
+		movui r6, DASH_WIDTH
+		movui r7, MORSE_HIGHT
+		call draw_rect_border
+		addi r22, r22, 10
+		br DRAW_UNIT_SPACE
+	
+	DRAW_CHAR_SPACE:
+		addi r22, r22, 5
+		br DRAW_UNIT_SPACE
+	
+	DRAW_UNIT_SPACE:
+		addi r22, r22, 5
+		
+	#Increment address
+	addi r16, r16, 4
+	
+	br DRAW_NEXT_SYMBOL
+	
+	FINISH_MORSE_DRAW:
+  
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
+
+
 ####FILLS_SCREEN BLACK
 
 .global fill_screen
@@ -71,7 +190,7 @@ addi sp, sp, 52 #Return stack pointer
 ret
 
 
-
+.global clear_char_buff
 clear_char_buff:
 
 addi sp, sp, -52
