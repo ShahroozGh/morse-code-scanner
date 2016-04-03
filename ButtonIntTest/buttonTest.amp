@@ -19,9 +19,14 @@
             <linker_section name=".reset">
                 <memory_device>SDRAM.s1</memory_device>
                 <base_address>0x00000000</base_address>
-                <end_address>0x0000001F</end_address>
+                <end_address>0x0000000F</end_address>
                 <required_section/>
                 <fixed_base_address/>
+            </linker_section>
+            <linker_section name=".data">
+                <memory_device>SDRAM.s1</memory_device>
+                <base_address>0x00000010</base_address>
+                <end_address>0x0000001F</end_address>
             </linker_section>
             <linker_section name=".exceptions">
                 <memory_device>SDRAM.s1</memory_device>
