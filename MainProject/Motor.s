@@ -1,6 +1,9 @@
 .equ JP1_ADDR, 0xFF200060
 .equ TIMER_ADDR, 0xFF202000
 .equ TIMER_ADDR_2, 0xFF202020
+.equ LEDR, 0xFF200000
+.equ ADDR_PUSHBUTTONS, 0xFF200050
+.equ IRQ_PUSHBUTTONS, 0x02
 .equ READ_TIME, 1000000000#0x7FFFFFFF #10 seconds
 .equ THRESH, 0x07
 .equ DELAY, 20
@@ -41,6 +44,119 @@ ENCODED_MORSE_SIZE:
 SCAN_RUNNING: #0 For stop, 1 means continue scan, 2 means start decoding
 .word 0
 
+
+.section .exceptions, "ax"
+
+#Save some regs on the stack so we can use them here without clobbering
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)#N stored here
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)	
+
+#Logic here
+
+BUTTON_ISR:
+	rdctl et, ipending #check ipending for timer interrupt
+	andi et, et, 0x02 
+	srli et, et, 0x01
+	#if irq1 != 1 not button int
+	
+	beq et, r0, exit_interrupt #if not zero button int has been called
+	
+	#Check which button pressed
+	
+	movia et, ADDR_PUSHBUTTONS
+	ldw r16, 12(et)
+	andi r16, r16, 0x02
+	srli r16, r16, 1
+	
+	#if 0 then not key 1 being pressed
+	beq r16, r0, ACK_INT 
+	
+	#Check if a scan is running
+	movia r16, SCAN_RUNNING
+	ldw r17, (r16)
+	
+	#If not running we want to start it
+	beq r17, r0, TURN_ON
+	
+	#turn led Off	
+	movia et,LEDR
+	movi  r17,0x00
+	stwio r17,0(et)
+	
+	#Set scan running to off
+	movia r17, 0
+	movia r16, SCAN_RUNNING
+	stw r17, (r16)
+	br ACK_INT
+	
+	TURN_ON:
+	
+	#turn led on	
+	movia et,LEDR
+	movi  r17,0xFF
+	stwio r17,0(et)
+	
+	#Set scan running to on
+	movia r17, 1
+	movia r16, SCAN_RUNNING
+	stw r17, (r16)
+	
+	ACK_INT:
+		
+	
+	#Clear edge reg
+	movia et,ADDR_PUSHBUTTONS
+	movi  r16,-1
+	stwio r16, 12(et)
+
+	br exit_interrupt #Nothing has been called
+
+
+
+
+
+
+
+  
+#Return registers to how they were before call
+exit_interrupt:
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+subi ea, ea, 4
+	eret
+
+
 .text
 
 .global main
@@ -58,11 +174,43 @@ main:
 	stwio r5, (r16)
 	
 	
+	#Init LEDS and button interrupts
+	#Clear edge reg
+	movia r17,ADDR_PUSHBUTTONS
+	movi  r18,-1
+	stwio r18, 12(r17)
+	
+	movia r17,ADDR_PUSHBUTTONS
+	movia r18,0xe
+	stwio r18,8(r17)  # Enable interrupts on push buttons 1,2, and 3 
+
+	movia r17,IRQ_PUSHBUTTONS
+	wrctl ienable,r17   # Enable bit 5 - button interrupt on Processor 
+
+	movia r17,1
+	wrctl ctl0,r17   # Enable global Interrupts on Processor 
+	
+	#Reset LEDS
+	movia r17,LEDR
+	movi  r18,0x00
+	stwio r18,0(r17)        # Write to LEDs 		
+	
+	
+	WAIT_TO_START:
+	#Wait for button interrupt to start
+	movia r17, SCAN_RUNNING
+	ldw r18, (r17)
+	
+	beq r18, r0, WAIT_TO_START
+	
+	#Reset timer
+	
 	#Start motor timer, When this timer ends we stop reading 
 	movia r4, READ_TIME
 	call timer2start
 	
-	
+	#Do not overwrite r17 during polling
+	movia  r17, 0x07f557ff  
   #Sensor read
 POLL:
  sensor_validity:
@@ -236,6 +384,8 @@ POLL:
 	#---------------------------------
 	
 	
+	
+	
 	##Check timer 2 to see if we should stop moving
 	POLL_TIMER_2:
 	movia r15, TIMER_ADDR_2
@@ -244,20 +394,122 @@ POLL:
 	
 	bne r19, r0, READ_COMPLETE		#Check if timer is not 0 ( TO = 1), this means timeout and we can finish reading
 	
+	
+	#Check if SCAN state is still 1, Other wise stop the scan
+	CHECK_SCAN_STATE:
+	movia r15, SCAN_RUNNING
+	ldw r15, (r15)
+	beq r15, r0, ONE_LINE_DONE
+	
 	#Not done, continue moving motor and checking sensor
 	br POLL
+	
+	
+	#Read One Line, need to add a char space to memory
+	ONE_LINE_DONE:
+	##Turn motor off
+	movia	 r19, 0xfffffffd        # motor0 disabled (bit0=1), direction set to forward (bit1=0) d = 1101 
+	stwio	 r19, 0(r16)
+	
+	#pointer to morse array
+	movia r15, ENCODED_MORSE
+	#size of array
+	movia r17, ENCODED_MORSE_SIZE
+	ldw r17, (r17)
+	#Get location of top of array
+	add r15, r17, r15
+	
+	#Store white space
+	movui r18, 3
+	stw r18, (r15)
+
+	#incr size
+	addi r17, r17, 4
+	movia r15, ENCODED_MORSE_SIZE
+	stw r17, (r15)
+	#Reset Start and end times, other state globals
+	call resetGlobals
+	
+	
+	#Go back to start loop to wait for start signal
+	br WAIT_TO_START
+	
 	
 	READ_COMPLETE:
 	##Turn motor off
 	movia	 r19, 0xfffffffd        # motor0 disabled (bit0=1), direction set to forward (bit1=0) d = 1101 
 	stwio	 r19, 0(r16)
 	
+	#Start Decoding
+	
+	#Start Drawing
+
 
 	
 LOOP_FOREVER:
     br LOOP_FOREVER                   # Loop forever.
 
 	
+#Reset globals needed for another line read
+resetGlobals:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)	
+
+#Logic here
+
+	movia r16, PREV_COLOR
+	movui r17, 1
+	stw r17, (r16)
+	
+	movia r16, BLACK_START_TIME
+	movui r17, 0
+	stw r17, (r16)
+	
+	movia r16, BLACK_END_TIME
+	movia r17, 0xFFFFFFFF
+	stw r17, (r16)
+	
+	movia r16, DELAY_BUFFER
+	movui r17, 0
+	stw r17, (r16)
+	
+
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
 	
 #WHITESPACE DETECT DETECT AND STORE FUNCTION
 storeWhitespace:

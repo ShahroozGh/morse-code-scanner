@@ -11,6 +11,7 @@
         <type>Assembly Program</type>
         <source_files>
             <source_file filepath="true">Motor.s</source_file>
+            <source_file filepath="true">VGARoutines.s</source_file>
         </source_files>
         <options>
             <start_symbol>main</start_symbol>
