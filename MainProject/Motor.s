@@ -4,7 +4,9 @@
 .equ READ_TIME, 1000000000#0x7FFFFFFF #10 seconds
 .equ THRESH, 0x07
 .equ DELAY, 20
-.equ DASH_LENGTH_THRESH, 0x02500000 
+.equ DASH_LENGTH_THRESH, 0x00FFFFFF # 0x02500000
+.equ LETTER_BREAK_THRESH,0x00AFFFFF #0x01800000 #0x01000000
+.equ SPACE_THRESH, 0x03000000
 
 .data #Starts at 200
 #Stored Encoded morse code
@@ -28,7 +30,7 @@ BLACK_START_TIME:
 .word 0
 
 BLACK_END_TIME:
-.word 0
+.word 0xFFFFFFFF
 
 DELAY_BUFFER:
 .word 0
@@ -165,6 +167,10 @@ POLL:
 		call read_timer2_value
 		movia r9, BLACK_START_TIME
 		stw r2, (r9)
+		
+		#Store NOTHING/LETTER BREAK/SPACE, if not on first black hit
+		call storeWhitespace
+		
 		br POLL_TIMER_2
 	
 	
@@ -248,6 +254,93 @@ POLL:
 LOOP_FOREVER:
     br LOOP_FOREVER                   # Loop forever.
 
+	
+	
+#WHITESPACE DETECT DETECT AND STORE FUNCTION
+storeWhitespace:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)#Measured time
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)	
+
+#Logic here
+
+	#Load Start and end time
+	movia r16, BLACK_END_TIME
+	ldw r17, (r16)
+	
+	#If BLACK_END_TIME is 0xFFFFFFFF it means it has not been set yet
+	#No whitespace to measure
+	movi r16, 0xFFFFFFFF
+	beq r17, r16, NOTHING_DONE
+	
+	movia r16, BLACK_START_TIME
+	ldw r18, (r16)
+	
+	#Get time of black
+	sub r18, r17, r18
+	
+	movia r16, LETTER_BREAK_THRESH
+	
+	bgt r18, r16, STORE_CHAR_SPACE
+	br NOTHING_DONE
+	
+	STORE_CHAR_SPACE:
+		#pointer to morse array
+		movia r16, ENCODED_MORSE
+		#size of array
+		movia r17, ENCODED_MORSE_SIZE
+		ldw r17, (r17)
+		#Get location of top of array
+		add r16, r17, r16
+		
+		#Store white space
+		movui r18, 3
+		stw r18, (r16)
+		br INCR_ENC_SIZE_W
+		
+	
+		
+	INCR_ENC_SIZE_W:
+		addi r17, r17, 4
+		movia r16, ENCODED_MORSE_SIZE
+		stw r17, (r16)
+	
+	NOTHING_DONE:
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
 	
 	
 #DOT/DASH DETECT AND STORE FUNCTION
