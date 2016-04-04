@@ -91,8 +91,21 @@ BUTTON_ISR:
 	srli r16, r16, 1
 	
 	#if 0 then not key 1 being pressed
-	beq r16, r0, ACK_INT 
+	bne r16, r0, BUTTON_1_PRESSED 
 	
+	
+	movia et, ADDR_PUSHBUTTONS
+	ldw r16, 12(et)
+	andi r16, r16, 0x04
+	srli r16, r16, 2
+	
+	#Check if button 2 pressed
+	bne r16, r0, BUTTON_2_PRESSED
+	
+	br ACK_INT
+	
+	
+	BUTTON_1_PRESSED:
 	#Check if a scan is running
 	movia r16, SCAN_RUNNING
 	ldw r17, (r16)
@@ -122,6 +135,17 @@ BUTTON_ISR:
 	movia r17, 1
 	movia r16, SCAN_RUNNING
 	stw r17, (r16)
+	
+	br ACK_INT
+	
+	BUTTON_2_PRESSED:
+
+	#Set scan running to decode
+	movia r17, 2
+	movia r16, SCAN_RUNNING
+	stw r17, (r16)
+	
+	br ACK_INT
 	
 	ACK_INT:
 		
@@ -208,7 +232,14 @@ main:
 	movia r17, SCAN_RUNNING
 	ldw r18, (r17)
 	
+	#Check if we should start decoding
+	movia r19, 2
+	beq r18, r19, READ_COMPLETE #Start decoding
+	
+	#check if we should wait
 	beq r18, r0, WAIT_TO_START
+	
+	
 	
 	#Reset timer
 	
@@ -261,28 +292,6 @@ POLL:
 	##	USE ENDTIME - STARTTIME to determine space or next letter (Dont to this on first loop (No endtime))
 	##If value goes below thrshold (black->White) take time snapshot, store in ENDTIME
 	##	Use STARTTIME - ENDTIME to determine dot or dash, store?
-	
-	#if sensor > thresh 
-	##	Snapshot->STARTIME
-	##  do deltaT = ENDTIME - STARTTIME
-	##if 
-	
-	#movi r5, 0x6
-	#bgt r18, r5, BLACK
-	#br WHITE:
-	
-	/* BLACK:
-	movui r4, 1
-	movui r5, ENCODED_MORSE
-	call morseParse
-	br POLL_TIMER_2
-	
-	WHITE:
-	movui r4, 0
-	movui r5, ENCODED_MORSE
-	call morseParse */
-	
-	
 	
 	#get a snapshot of the time
 	call read_timer2_value
