@@ -17,6 +17,7 @@
 ENCODED_MORSE:
 .skip 400 #400 bytes reserved for 100 words
 
+.global DECODED_TEXT
 DECODED_TEXT:
 .skip 400  #400 bytes for encoded text
 
@@ -41,6 +42,10 @@ DELAY_BUFFER:
 
 .global ENCODED_MORSE_SIZE
 ENCODED_MORSE_SIZE:
+.word 0
+
+.global DECODED_TEXT_SIZE
+DECODED_TEXT_SIZE:
 .word 0
 
 SCAN_RUNNING: #0 For stop, 1 means continue scan, 2 means start decoding
@@ -443,6 +448,7 @@ POLL:
 	stwio	 r19, 0(r16)
 	
 	#Start Decoding
+	call decodeMorse
 	
 	#Start Drawing
 	#Reset screen to black
@@ -451,7 +457,11 @@ POLL:
 	#Draw morse
 	call draw_encoded_morse
 	
+	#Clear the char buffer
+	call clear_char_buff
+	
 	#Draw Decoded text
+	call draw_decoded_text
 	
 LOOP_FOREVER:
     br LOOP_FOREVER                   # Loop forever.

@@ -10,6 +10,93 @@
 .equ UNIT_WIDTH, 5
 .equ DASH_WIDTH, 10
 
+.equ TEXT_START_X, 2
+.equ TEXT_START_Y, 5
+
+
+
+.global draw_decoded_text
+#takes in NOTHING
+draw_decoded_text:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)
+
+#Logic here
+
+	#Pointer to encoded array, Increment this to keep track of where we are in the array
+	movia r16, DECODED_TEXT
+	
+	#Size of array
+	movia r17, DECODED_TEXT_SIZE
+	ldw r17, (r17)
+	
+	#FINAL LOCATION + 1
+	add r17, r17, r16
+	
+	movui r22, TEXT_START_X
+	#movui r23, MORSE_START_Y
+	
+	#Iterate throuogh array and draw
+	
+	DRAW_NEXT_CHAR:
+	
+		#If we get to final address+1 stop
+		beq r17, r16, FINISH_TEXT_DRAW
+		
+		#Load Encoded symbol
+		ldw r18, (r16)
+		
+		#Draw it
+		
+		mov r4, r22
+		movui r5, TEXT_START_Y
+		mov r6, r18
+		call draw_char_at_xy
+		
+		addi r22, r22, 1
+		#Increment address
+		addi r16, r16, 4
+	
+	br DRAW_NEXT_CHAR
+	
+	FINISH_TEXT_DRAW:
+  
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
 
 
 .global draw_encoded_morse
@@ -123,6 +210,88 @@ addi sp, sp, 52 #Return stack pointer
 ret
 
 
+
+#takes in x,y in screen coords and ASCII then draws char there, function takes care of calculating offset
+draw_char_at_xy:
+
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)#x parameter
+stw r5, 40(sp)#y parameter
+stw r6, 44(sp)#char in ASCII
+stw r7, 48(sp)	
+
+#Logic here
+	#Offset = 2*x, + 1024*y
+	
+	#make sure parameters are within bounds
+	#(0,0) -> (319, 239)
+	
+	blt r4, r0, INVALID_CHAR
+	blt r5, r0, INVALID_CHAR
+	
+	movia r18, 80
+	bgt r4, r18, INVALID_CHAR
+	movia r18, 60
+	bgt r5, r18, INVALID_CHAR
+	
+	
+	#load CHAR Address
+	movia r16, CHAR_ADDR
+	
+	#calculate offset
+	
+	muli r18, r4, 1
+	muli r19, r5, 128
+	add r19, r19, r18
+	
+	#r19 is now offset
+	#get offset address
+	add r16, r16, r19
+	
+
+	stbio r6, (r16)
+	
+	br CHAR_PLOT_DONE
+	
+	#IF INVALID COORDS
+	INVALID_CHAR:
+	
+	CHAR_PLOT_DONE:
+	
+  
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
+
 ####FILLS_SCREEN BLACK
 
 .global fill_screen
@@ -216,7 +385,7 @@ stw r7, 48(sp)
 	#load VGA Address
 	movia r16, CHAR_ADDR
 	
-	NEXT_CHAR:
+	NEXT_CHAR_BUFF:
 	#set color to BLACK
 	movi r17, 0x00 #empty char
 	stbio r17, (r16)
@@ -227,7 +396,7 @@ stw r7, 48(sp)
 	#Go to next address
 	addi r16, r16, 1
 	
-	br NEXT_CHAR
+	br NEXT_CHAR_BUFF
 	
 	CLEAR_DONE:
 	
