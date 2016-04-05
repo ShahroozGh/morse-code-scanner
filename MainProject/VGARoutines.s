@@ -11,7 +11,7 @@
 .equ DASH_WIDTH, 10
 
 .equ TEXT_START_X, 2
-.equ TEXT_START_Y, 5
+.equ TEXT_START_Y, 40
 
 
 
@@ -134,7 +134,7 @@ stw r7, 48(sp)
 	add r17, r17, r16
 	
 	movui r22, MORSE_START_X
-	#movui r23, MORSE_START_Y
+	movui r23, MORSE_START_Y
 	
 	#Iterate throuogh array and draw
 	
@@ -154,33 +154,46 @@ stw r7, 48(sp)
 	beq r18, r19, DRAW_DASH
 	
 	movui r19, 3
-	beq r18, r19, DRAW_UNIT_SPACE
+	beq r18, r19, DRAW_CHAR_SPACE
 	
 	#Draw dot/dash then unit space
 	DRAW_DOT:
 		mov r4, r22
-		movui r5, MORSE_START_Y
+		mov r5, r23
 		movui r6, UNIT_WIDTH
 		movui r7, MORSE_HIGHT
-		call draw_rect_border
+		call draw_rect
 		addi r22, r22, 5
 		br DRAW_UNIT_SPACE
 	DRAW_DASH:
 		mov r4, r22
-		movui r5, MORSE_START_Y
+		mov r5, r23
 		movui r6, DASH_WIDTH
 		movui r7, MORSE_HIGHT
-		call draw_rect_border
+		call draw_rect
 		addi r22, r22, 10
 		br DRAW_UNIT_SPACE
 	
 	DRAW_CHAR_SPACE:
 		addi r22, r22, 5
+		
+		#Line wrapping
+		movia r4, 150
+		bgt r22, r4, INCR_Y_MORSE
 		br DRAW_UNIT_SPACE
+		
+		INCR_Y_MORSE:
+		addi r23, r23, 20
+		movui r22, MORSE_START_X
+		
+		br INCR_ADDR
 	
 	DRAW_UNIT_SPACE:
 		addi r22, r22, 5
 		
+		
+	
+	INCR_ADDR:
 	#Increment address
 	addi r16, r16, 4
 	
