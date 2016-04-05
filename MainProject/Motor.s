@@ -48,7 +48,7 @@ ENCODED_MORSE_SIZE:
 DECODED_TEXT_SIZE:
 .word 0
 
-SCAN_RUNNING: #0 For stop, 1 means continue scan, 2 means start decoding
+SCAN_RUNNING: #0 For stop, 1 means continue scan, 2 means start decoding, 3 means reset everything to initial state
 .word 0
 
 
@@ -102,6 +102,14 @@ BUTTON_ISR:
 	#Check if button 2 pressed
 	bne r16, r0, BUTTON_2_PRESSED
 	
+	movia et, ADDR_PUSHBUTTONS
+	ldw r16, 12(et)
+	andi r16, r16, 0x08
+	srli r16, r16, 3
+	
+	#Check if button 3 pressed
+	bne r16, r0, BUTTON_3_PRESSED
+	
 	br ACK_INT
 	
 	
@@ -142,6 +150,16 @@ BUTTON_ISR:
 
 	#Set scan running to decode
 	movia r17, 2
+	movia r16, SCAN_RUNNING
+	stw r17, (r16)
+	
+	br ACK_INT
+	
+	#Button 3 pressed, reset everything
+	BUTTON_3_PRESSED:
+
+	#Set scan running to reset
+	movia r17, 3
 	movia r16, SCAN_RUNNING
 	stw r17, (r16)
 	
@@ -236,9 +254,13 @@ main:
 	movia r19, 2
 	beq r18, r19, READ_COMPLETE #Start decoding
 	
+	#Check if we should reset
+	movia r19, 3
+	beq r18, r19, RESET_ALL #Start decoding
+	
 	#check if we should wait
 	beq r18, r0, WAIT_TO_START
-	
+	#Else none of these conditions true, it means it is 1
 	
 	
 	#Reset timer
@@ -472,10 +494,95 @@ POLL:
 	#Draw Decoded text
 	call draw_decoded_text
 	
+	WAIT_TO_RESET:
+		#Wait for button interrupt to start
+		movia r17, SCAN_RUNNING
+		ldw r18, (r17)
+		
+		#Check if we should reset
+		movia r19, 3
+		beq r18, r19, RESET_ALL #Start decoding
+	br WAIT_TO_RESET
+	
+	
+	RESET_ALL:
+	call resetEverything
+	br main
+	
 LOOP_FOREVER:
     br LOOP_FOREVER                   # Loop forever.
 
+#Reset Everything
+#Timer value returned in r2
+resetEverything:
+addi sp, sp, -52
+
+#Callee saved registers
+stw r16, 0(sp)
+stw r17, 4(sp)
+stw r18, 8(sp)
+stw r19, 12(sp)
+stw r20, 16(sp)
+stw r21, 20(sp)
+stw r22, 24(sp)
+stw r23, 28(sp)
+
+stw ra, 32(sp)
+stw r4, 36(sp)#N stored here
+stw r5, 40(sp)
+stw r6, 44(sp)
+stw r7, 48(sp)	
+
+#Logic here
+
+
+#Wait
 	
+	call resetGlobals
+	
+	movia r16, ENCODED_MORSE_SIZE
+	movui r17, 0
+	stw r17, (r16)
+	
+	movia r16, DECODED_TEXT_SIZE
+	movui r17, 0
+	stw r17, (r16)
+	
+	movia r16, SCAN_RUNNING
+	movia r17, 0
+	stw r17, (r16)
+	
+	#Reset screen to black
+	call fill_screen
+	
+	#Clear the char buffer
+	call clear_char_buff
+	
+
+	
+  
+#Return registers to how they were before call
+
+ldw r16, 0(sp)
+ldw r17, 4(sp)
+ldw r18, 8(sp)
+ldw r19, 12(sp)
+ldw r20, 16(sp)
+ldw r21, 20(sp)
+ldw r22, 24(sp)
+ldw r23, 28(sp)
+
+ldw ra, 32(sp)
+ldw r4, 36(sp)
+ldw r5, 40(sp)
+ldw r6, 44(sp)
+ldw r7, 48(sp)
+
+addi sp, sp, 52 #Return stack pointer 
+
+ret
+
+
 #Reset globals needed for another line read
 resetGlobals:
 
@@ -907,6 +1014,8 @@ ldw r7, 48(sp)
 addi sp, sp, 52 #Return stack pointer 
 
 ret
+
+
 
 
     
