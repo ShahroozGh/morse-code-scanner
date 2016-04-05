@@ -157,7 +157,7 @@ beq r4, r16, RETURN_E
 
 movui r16, 0x1121
 beq r4, r16, RETURN_F
-/*
+
 movui r16, 0x221
 beq r4, r16, RETURN_G
 
@@ -196,7 +196,28 @@ beq r4, r16, RETURN_R
 
 movui r16, 0x111
 beq r4, r16, RETURN_S
-*/
+
+movui r16, 0x2
+beq r4, r16, RETURN_T
+
+movui r16, 0x112
+beq r4, r16, RETURN_U
+
+movui r16, 0x1112
+beq r4, r16, RETURN_V
+
+movui r16, 0x122
+beq r4, r16, RETURN_W
+
+movui r16, 0x2112
+beq r4, r16, RETURN_X
+
+movui r16, 0x2122
+beq r4, r16, RETURN_Y
+
+movui r16, 0x2211
+beq r4, r16, RETURN_Z
+
 movui r2, 0x0
 br RETURN_ASCII
 
@@ -224,6 +245,85 @@ RETURN_F:
 movui r2, 0x46
 br RETURN_ASCII
 
+RETURN_G:
+movui r2, 0x47
+br RETURN_ASCII
+
+RETURN_H:
+movui r2, 0x48
+br RETURN_ASCII
+
+RETURN_I:
+movui r2, 0x49
+br RETURN_ASCII
+
+RETURN_J:
+movui r2, 0x4A
+br RETURN_ASCII
+
+RETURN_K:
+movui r2, 0x4B
+br RETURN_ASCII
+
+RETURN_L:
+movui r2, 0x4C
+br RETURN_ASCII
+
+RETURN_M:
+movui r2, 0x4D
+br RETURN_ASCII
+
+RETURN_N:
+movui r2, 0x4E
+br RETURN_ASCII
+
+RETURN_O:
+movui r2, 0x4F
+br RETURN_ASCII
+
+RETURN_P:
+movui r2, 0x50
+br RETURN_ASCII
+
+RETURN_Q:
+movui r2, 0x51
+br RETURN_ASCII
+
+RETURN_R:
+movui r2, 0x52
+br RETURN_ASCII
+
+RETURN_S:
+movui r2, 0x53
+br RETURN_ASCII
+
+RETURN_T:
+movui r2, 0x54
+br RETURN_ASCII
+
+RETURN_U:
+movui r2, 0x55
+br RETURN_ASCII
+
+RETURN_V:
+movui r2, 0x56
+br RETURN_ASCII
+
+RETURN_W:
+movui r2, 0x57
+br RETURN_ASCII
+
+RETURN_X:
+movui r2, 0x58
+br RETURN_ASCII
+
+RETURN_Y:
+movui r2, 0x59
+br RETURN_ASCII
+
+RETURN_Z:
+movui r2, 0x5A
+br RETURN_ASCII
 
 RETURN_ASCII:
 #Return registers to how they were before call
